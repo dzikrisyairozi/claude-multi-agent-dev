@@ -2,11 +2,24 @@
   "name": "electron-meteora",
   "version": "0.1.0",
   "private": true,
+  "main": "./main.js",
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently \"pnpm run next:dev\" \"pnpm run electron:dev\"",
+    "next:dev": "next dev",
+    "electron:dev": "wait-on http://localhost:3000 && cross-env NODE_ENV=development electron .",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "electron:build": "next build && electron-builder"
+  },
+  "build": {
+    "appId": "com.your.app",
+    "files": [
+      "out/**/*",
+      "main.js"
+    ],
+    "directories": {
+      "buildResources": "resources"
+    }
   },
   "dependencies": {
     "next": "15.0.3",
@@ -18,6 +31,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
     "electron": "^33.2.1",
     "electron-builder": "^25.1.8",
     "eslint": "^8",
