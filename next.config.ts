@@ -1,9 +1,10 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  output: 'export',
-  images: {
-    unoptimized: true
-  }
-}
+import type { NextConfig } from "next";
 
-module.exports = nextConfig
+const nextConfig: NextConfig = {
+  /* config options here */
+  serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
+  reactCompiler: true,
+  reactStrictMode: false,
+};
+
+export default nextConfig;

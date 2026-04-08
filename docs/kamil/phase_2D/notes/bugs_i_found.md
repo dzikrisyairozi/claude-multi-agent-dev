@@ -1,0 +1,1 @@
+1. when shift enter the text did not got larger but stay same height (better like claude or chatgpt that it got more height the more lines, but there is max height)
