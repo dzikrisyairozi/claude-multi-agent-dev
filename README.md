@@ -38,7 +38,7 @@ All coordination happens through **real GitHub issues, branches, and PRs** — s
 | Agent | Role |
 |---|---|
 | **lead-engineer** | Plans the project, files tickets, delegates, reviews PRs, merges. Never writes feature code. |
-| **uiux-designer** | Produces detailed UI/UX specs (as issue comments) so the frontend agent builds without guessing. Can read Figma if `FIGMA_TOKEN` is set. |
+| **uiux-designer** | Produces detailed UI/UX specs (as issue comments) in Tailwind-class vocabulary so the frontend agent builds without guessing. |
 | **frontend-engineer** | Implements UI tickets in **Tailwind CSS**. Creates branches, writes code, opens PRs. |
 | **backend-engineer** | Implements APIs, schema, auth, migrations, business logic. Creates branches, opens PRs. |
 | **qa-engineer** | Code-reviews every PR **and** drives a real browser via Playwright MCP. Returns PASS or FAIL with evidence. |
@@ -66,7 +66,6 @@ On first run, `setup.sh` will:
 GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 GITHUB_OWNER=your-github-username
 GITHUB_REPO=your-repo-name
-FIGMA_TOKEN=                # optional
 DASHBOARD_PORT=3456
 ```
 
@@ -110,7 +109,7 @@ claude-multi-agent-dev/
 │       ├── backend-engineer.md
 │       ├── uiux-designer.md
 │       └── qa-engineer.md
-├── .mcp.json                  # GitHub (docker) + Playwright + Figma MCP servers
+├── .mcp.json                  # GitHub (docker) + Playwright MCP servers
 ├── .env.example               # Config template
 ├── .gitignore
 ├── CLAUDE.md                  # Project-level instructions Claude Code reads automatically
@@ -145,7 +144,6 @@ app/
 | `GITHUB_TOKEN` | yes | Personal access token with `repo` + `project` scopes. Used by the GitHub MCP, setup script, and dashboard. |
 | `GITHUB_OWNER` | yes | Target repo owner (user or org). |
 | `GITHUB_REPO` | yes | Target repo name. |
-| `FIGMA_TOKEN` | no | Figma personal access token. If set, the UI/UX agent can pull specs via the Figma MCP. |
 | `DASHBOARD_PORT` | no | Port for the local dashboard. Default: `3456`. |
 
 ---
@@ -159,8 +157,7 @@ The Lead is the main Claude session. It invokes specialists via the `Task` tool,
 
 ### MCP servers (`.mcp.json`)
 - **github** — the official GitHub MCP server from `ghcr.io/github/github-mcp-server` (runs via Docker)
-- **playwright** — `@playwright/mcp@latest` for QA and UI/UX browser interactions
-- **figma** — `figma-developer-mcp` for the UI/UX agent (requires `FIGMA_TOKEN` to actually work)
+- **playwright** — `@playwright/mcp@latest` for QA browser testing
 
 ### Hooks (`.claude/settings.json`)
 Claude Code fires hooks on `PreToolUse`, `PostToolUse`, `SubagentStop`, `UserPromptSubmit`, and `Stop`. Each hook invokes `node .claude/hooks/emit.mjs <type>`, which reads the Claude-provided JSON payload from stdin, normalizes it, and POSTs it to `http://localhost:$DASHBOARD_PORT/event`. If the dashboard is down, the hook silently fails — it never blocks the agent.
