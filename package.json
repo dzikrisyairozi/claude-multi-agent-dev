@@ -1,0 +1,20 @@
+{
+  "name": "claude-multi-agent-dev",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A template repo that turns Claude Code into a multi-agent software development team — Lead, Frontend, Backend, UI/UX, and QA — with a live orchestration dashboard.",
+  "scripts": {
+    "setup": "bash scripts/setup.sh",
+    "dashboard": "bash scripts/start-dashboard.sh",
+    "dashboard:stop": "bash -c 'if [ -f dashboard/.dashboard.pid ]; then kill $(cat dashboard/.dashboard.pid) 2>/dev/null; rm dashboard/.dashboard.pid; echo stopped; else echo not running; fi'"
+  },
+  "keywords": [
+    "claude-code",
+    "multi-agent",
+    "template",
+    "orchestration",
+    "github",
+    "playwright"
+  ],
+  "license": "MIT"
+}

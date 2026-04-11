@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Claude Multi-Agent · Orchestration</title>
+    <style>
+      /* =====================================================================
+         Claude Multi-Agent Dev — single-file dashboard
+         Dark theme · agent graph · activity log · ticket board · WS live
+         ===================================================================*/
+
+      :root {
+        --bg: #0b0f17;
+        --panel: #131a26;
+        --panel-2: #0f1522;
+        --line: #1f2a3d;
+        --text: #e5edf7;
+        --text-dim: #8a99b3;
+        --text-faint: #4b5b78;
+
+        --lead: #f5b13d;
+        --frontend: #4cc9f0;
+        --backend: #a78bfa;
+        --uiux: #f472b6;
+        --qa: #34d399;
+        --github: #94a3b8;
+
+        --todo: #6b7280;
+        --in-progress: #3b82f6;
+        --review: #f59e0b;
+        --qa-testing: #10b981;
+        --done: #22c55e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 13px;
+        overflow: hidden;
+      }
+
+      #app {
+        display: grid;
+        grid-template-columns: 350px 1fr 240px;
+        grid-template-rows: 44px 1fr;
+        height: 100vh;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      /* ---------- Top bar ---------- */
+      header.topbar {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+      }
+      .topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .conn-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ef4444;
+        transition: background 250ms;
+      }
+      .conn-dot.connected {
+        background: #22c55e;
+        box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+      }
+      .brand {
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+      }
+      .topbar-right {
+        display: flex;
+        gap: 16px;
+        font-size: 11px;
+        color: var(--text-faint);
+      }
+      .topbar-right span strong {
+        color: var(--text-dim);
+        font-weight: 500;
+      }
+
+      /* ---------- Left: activity log ---------- */
+      section.panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 14px 10px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      section.panel > h2 {
+        margin: 0 0 12px;
+        font-size: 10px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        font-weight: 600;
+      }
+      #log {
+        grid-column: 1;
+        grid-row: 2;
+      }
+      #logList {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        overflow-y: auto;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      #logList::-webkit-scrollbar {
+        width: 6px;
+      }
+      #logList::-webkit-scrollbar-thumb {
+        background: var(--line);
+        border-radius: 3px;
+      }
+      #logList li {
+        padding: 6px 8px;
+        border-left: 2px solid var(--line);
+        background: var(--panel-2);
+        border-radius: 0 4px 4px 0;
+        font-size: 11px;
+        color: var(--text-dim);
+        line-height: 1.4;
+        animation: fadeIn 300ms ease;
+      }
+      #logList li.fresh {
+        border-left-color: #22c55e;
+        background: rgba(34, 197, 94, 0.06);
+        color: var(--text);
+      }
+      #logList li .who {
+        font-weight: 600;
+      }
+      #logList li .arrow {
+        color: var(--text-faint);
+        margin: 0 4px;
+      }
+      #logList li .t {
+        color: var(--text-faint);
+        font-size: 10px;
+        margin-left: 6px;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* ---------- Center: agent graph ---------- */
+      #graph {
+        grid-column: 2;
+        grid-row: 2;
+        position: relative;
+        padding: 0;
+        overflow: hidden;
+      }
+      #graph svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .edge-line {
+        stroke: var(--line);
+        stroke-width: 1.5;
+        fill: none;
+      }
+
+      .node-group {
+        cursor: default;
+      }
+      .node-rect {
+        fill: var(--panel-2);
+        stroke: var(--line);
+        stroke-width: 1.5;
+        transition: stroke 250ms, filter 250ms, transform 250ms;
+      }
+      .node-group.active .node-rect {
+        stroke-width: 2;
+      }
+      .node-role {
+        font-size: 9px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        fill: var(--text-faint);
+      }
+      .node-name {
+        font-size: 13px;
+        font-weight: 600;
+        fill: var(--text);
+      }
+      .node-status {
+        font-size: 10px;
+        fill: var(--text-dim);
+      }
+
+      /* Active glow per agent */
+      .node-group[data-agent="lead-engineer"].active .node-rect {
+        stroke: var(--lead);
+        filter: drop-shadow(0 0 10px rgba(245, 177, 61, 0.5));
+      }
+      .node-group[data-agent="frontend-engineer"].active .node-rect {
+        stroke: var(--frontend);
+        filter: drop-shadow(0 0 10px rgba(76, 201, 240, 0.5));
+      }
+      .node-group[data-agent="backend-engineer"].active .node-rect {
+        stroke: var(--backend);
+        filter: drop-shadow(0 0 10px rgba(167, 139, 250, 0.5));
+      }
+      .node-group[data-agent="uiux-designer"].active .node-rect {
+        stroke: var(--uiux);
+        filter: drop-shadow(0 0 10px rgba(244, 114, 182, 0.5));
+      }
+      .node-group[data-agent="qa-engineer"].active .node-rect {
+        stroke: var(--qa);
+        filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.5));
+      }
+      .node-group[data-agent="github"].active .node-rect {
+        stroke: var(--github);
+        filter: drop-shadow(0 0 10px rgba(148, 163, 184, 0.5));
+      }
+
+      /* Role color on the name text */
+      .node-group[data-agent="lead-engineer"] .node-name {
+        fill: var(--lead);
+      }
+      .node-group[data-agent="frontend-engineer"] .node-name {
+        fill: var(--frontend);
+      }
+      .node-group[data-agent="backend-engineer"] .node-name {
+        fill: var(--backend);
+      }
+      .node-group[data-agent="uiux-designer"] .node-name {
+        fill: var(--uiux);
+      }
+      .node-group[data-agent="qa-engineer"] .node-name {
+        fill: var(--qa);
+      }
+      .node-group[data-agent="github"] .node-name {
+        fill: var(--github);
+      }
+
+      /* Pulse ring around active node */
+      .pulse-ring {
+        fill: none;
+        stroke-width: 2;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .node-group.active .pulse-ring {
+        animation: pulse-ring 1400ms ease-out infinite;
+      }
+      .node-group[data-agent="lead-engineer"] .pulse-ring {
+        stroke: var(--lead);
+      }
+      .node-group[data-agent="frontend-engineer"] .pulse-ring {
+        stroke: var(--frontend);
+      }
+      .node-group[data-agent="backend-engineer"] .pulse-ring {
+        stroke: var(--backend);
+      }
+      .node-group[data-agent="uiux-designer"] .pulse-ring {
+        stroke: var(--uiux);
+      }
+      .node-group[data-agent="qa-engineer"] .pulse-ring {
+        stroke: var(--qa);
+      }
+      .node-group[data-agent="github"] .pulse-ring {
+        stroke: var(--github);
+      }
+      @keyframes pulse-ring {
+        0% {
+          opacity: 0.8;
+          transform: scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.3);
+        }
+      }
+
+      /* Moving pulse dots along edges */
+      .edge-pulse {
+        r: 4;
+      }
+
+      /* ---------- Right: ticket board ---------- */
+      #board {
+        grid-column: 3;
+        grid-row: 2;
+      }
+      .col {
+        margin-bottom: 14px;
+      }
+      .col-header {
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin-bottom: 6px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .col-header .count {
+        color: var(--text-dim);
+      }
+      .ticket {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 8px;
+        margin-bottom: 4px;
+        font-size: 11px;
+        animation: fadeIn 300ms ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .ticket .num {
+        color: var(--text-faint);
+        font-size: 10px;
+      }
+      .ticket .title {
+        color: var(--text);
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ticket .badge {
+        font-size: 8px;
+        padding: 1px 5px;
+        border-radius: 3px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .badge[data-state="todo"] {
+        background: rgba(107, 114, 128, 0.2);
+        color: var(--todo);
+      }
+      .badge[data-state="in-progress"] {
+        background: rgba(59, 130, 246, 0.2);
+        color: var(--in-progress);
+      }
+      .badge[data-state="review"] {
+        background: rgba(245, 158, 11, 0.2);
+        color: var(--review);
+      }
+      .badge[data-state="qa-testing"] {
+        background: rgba(16, 185, 129, 0.2);
+        color: var(--qa-testing);
+      }
+      .badge[data-state="done"] {
+        background: rgba(34, 197, 94, 0.2);
+        color: var(--done);
+      }
+
+      .empty-placeholder {
+        color: var(--text-faint);
+        font-size: 10px;
+        padding: 4px 0;
+        font-style: italic;
+      }
+
+      /* ---------- Responsive fallback ---------- */
+      @media (max-width: 1024px) {
+        #app {
+          grid-template-columns: 1fr;
+          grid-template-rows: 44px 300px 300px auto;
+          overflow-y: auto;
+          height: auto;
+        }
+        #log,
+        #graph,
+        #board {
+          grid-column: 1;
+        }
+        #log {
+          grid-row: 2;
+        }
+        #graph {
+          grid-row: 3;
+        }
+        #board {
+          grid-row: 4;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <!-- top bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <div id="connDot" class="conn-dot" title="disconnected"></div>
+          <span class="brand">claude · multi-agent dev</span>
+        </div>
+        <div class="topbar-right">
+          <span><strong id="eventCount">0</strong> events</span>
+          <span id="connText">disconnected</span>
+        </div>
+      </header>
+
+      <!-- activity log -->
+      <section id="log" class="panel">
+        <h2>Activity</h2>
+        <ul id="logList"></ul>
+      </section>
+
+      <!-- agent graph -->
+      <section id="graph" class="panel">
+        <svg id="graphSvg" viewBox="0 0 800 560" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <!-- Arrow head marker -->
+            <marker
+              id="arrow"
+              viewBox="0 -4 8 8"
+              refX="6"
+              refY="0"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto"
+            >
+              <path d="M0,-4 L8,0 L0,4" fill="#1f2a3d"></path>
+            </marker>
+          </defs>
+        </svg>
+      </section>
+
+      <!-- ticket board -->
+      <section id="board" class="panel">
+        <h2>Tickets</h2>
+        <div id="boardBody"></div>
+      </section>
+    </div>
+
+    <script>
+      // ===================================================================
+      // state
+      // ===================================================================
+      const AGENTS = [
+        {
+          id: "lead-engineer",
+          role: "Lead",
+          name: "Lead Engineer",
+          x: 400,
+          y: 240,
+          color: "#f5b13d",
+        },
+        {
+          id: "uiux-designer",
+          role: "UI/UX",
+          name: "UI/UX Designer",
+          x: 130,
+          y: 110,
+          color: "#f472b6",
+        },
+        {
+          id: "frontend-engineer",
+          role: "Frontend",
+          name: "Frontend Engineer",
+          x: 130,
+          y: 370,
+          color: "#4cc9f0",
+        },
+        {
+          id: "backend-engineer",
+          role: "Backend",
+          name: "Backend Engineer",
+          x: 670,
+          y: 110,
+          color: "#a78bfa",
+        },
+        {
+          id: "qa-engineer",
+          role: "QA",
+          name: "QA Engineer",
+          x: 670,
+          y: 370,
+          color: "#34d399",
+        },
+        {
+          id: "github",
+          role: "Shared",
+          name: "GitHub",
+          x: 400,
+          y: 500,
+          color: "#94a3b8",
+        },
+      ];
+
+      const NODE_W = 170;
+      const NODE_H = 72;
+
+      // Lead ↔ all agents; all agents ↔ github
+      const EDGES = [
+        ["lead-engineer", "uiux-designer"],
+        ["lead-engineer", "frontend-engineer"],
+        ["lead-engineer", "backend-engineer"],
+        ["lead-engineer", "qa-engineer"],
+        ["uiux-designer", "github"],
+        ["frontend-engineer", "github"],
+        ["backend-engineer", "github"],
+        ["qa-engineer", "github"],
+        ["lead-engineer", "github"],
+      ];
+
+      const state = {
+        connected: false,
+        eventCount: 0,
+        agents: new Map(),
+        tickets: new Map(), // number -> { number, title, state }
+      };
+      for (const a of AGENTS) {
+        state.agents.set(a.id, {
+          ...a,
+          status: "idle",
+          activeTimer: null,
+        });
+      }
+
+      // ===================================================================
+      // graph rendering
+      // ===================================================================
+      const SVG_NS = "http://www.w3.org/2000/svg";
+      const svg = document.getElementById("graphSvg");
+
+      function buildGraph() {
+        // edges first so nodes sit on top
+        for (const [from, to] of EDGES) {
+          const a = AGENTS.find((n) => n.id === from);
+          const b = AGENTS.find((n) => n.id === to);
+          const line = document.createElementNS(SVG_NS, "line");
+          line.setAttribute("class", "edge-line");
+          line.setAttribute("x1", a.x);
+          line.setAttribute("y1", a.y);
+          line.setAttribute("x2", b.x);
+          line.setAttribute("y2", b.y);
+          line.dataset.from = from;
+          line.dataset.to = to;
+          svg.appendChild(line);
+        }
+
+        // nodes
+        for (const a of AGENTS) {
+          const g = document.createElementNS(SVG_NS, "g");
+          g.setAttribute("class", "node-group");
+          g.setAttribute(
+            "transform",
+            `translate(${a.x - NODE_W / 2},${a.y - NODE_H / 2})`,
+          );
+          g.dataset.agent = a.id;
+
+          const rect = document.createElementNS(SVG_NS, "rect");
+          rect.setAttribute("class", "node-rect");
+          rect.setAttribute("width", NODE_W);
+          rect.setAttribute("height", NODE_H);
+          rect.setAttribute("rx", 10);
+          g.appendChild(rect);
+
+          const ring = document.createElementNS(SVG_NS, "rect");
+          ring.setAttribute("class", "pulse-ring");
+          ring.setAttribute("x", -4);
+          ring.setAttribute("y", -4);
+          ring.setAttribute("width", NODE_W + 8);
+          ring.setAttribute("height", NODE_H + 8);
+          ring.setAttribute("rx", 12);
+          ring.style.transformOrigin = `${NODE_W / 2}px ${NODE_H / 2}px`;
+          g.appendChild(ring);
+
+          const role = document.createElementNS(SVG_NS, "text");
+          role.setAttribute("class", "node-role");
+          role.setAttribute("x", 12);
+          role.setAttribute("y", 18);
+          role.textContent = a.role.toUpperCase();
+          g.appendChild(role);
+
+          const name = document.createElementNS(SVG_NS, "text");
+          name.setAttribute("class", "node-name");
+          name.setAttribute("x", 12);
+          name.setAttribute("y", 38);
+          name.textContent = a.name;
+          g.appendChild(name);
+
+          const status = document.createElementNS(SVG_NS, "text");
+          status.setAttribute("class", "node-status");
+          status.setAttribute("x", 12);
+          status.setAttribute("y", 58);
+          status.textContent = "idle";
+          status.dataset.role = "status";
+          g.appendChild(status);
+
+          svg.appendChild(g);
+        }
+      }
+
+      function setNodeStatus(agentId, text) {
+        const g = svg.querySelector(`.node-group[data-agent="${agentId}"]`);
+        if (!g) return;
+        const t = g.querySelector('text[data-role="status"]');
+        if (t) t.textContent = text.slice(0, 28);
+      }
+
+      function markActive(agentId) {
+        const s = state.agents.get(agentId);
+        if (!s) return;
+        const g = svg.querySelector(`.node-group[data-agent="${agentId}"]`);
+        if (!g) return;
+        g.classList.add("active");
+        if (s.activeTimer) clearTimeout(s.activeTimer);
+        s.activeTimer = setTimeout(() => {
+          g.classList.remove("active");
+          setNodeStatus(agentId, "idle");
+          s.activeTimer = null;
+        }, 2600);
+      }
+
+      function pulseEdge(from, to, color) {
+        const line =
+          svg.querySelector(
+            `.edge-line[data-from="${from}"][data-to="${to}"]`,
+          ) ||
+          svg.querySelector(
+            `.edge-line[data-from="${to}"][data-to="${from}"]`,
+          );
+        if (!line) return;
+
+        const x1 = Number(line.getAttribute("x1"));
+        const y1 = Number(line.getAttribute("y1"));
+        const x2 = Number(line.getAttribute("x2"));
+        const y2 = Number(line.getAttribute("y2"));
+
+        const c = document.createElementNS(SVG_NS, "circle");
+        c.setAttribute("class", "edge-pulse");
+        c.setAttribute("cx", x1);
+        c.setAttribute("cy", y1);
+        c.setAttribute("r", 5);
+        c.setAttribute("fill", color || "#22c55e");
+        c.style.filter = `drop-shadow(0 0 6px ${color || "#22c55e"})`;
+        svg.appendChild(c);
+
+        const duration = 900;
+        const start = performance.now();
+        function step(now) {
+          const t = Math.min(1, (now - start) / duration);
+          const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+          c.setAttribute("cx", x1 + (x2 - x1) * ease);
+          c.setAttribute("cy", y1 + (y2 - y1) * ease);
+          c.setAttribute("opacity", 1 - t * 0.4);
+          if (t < 1) requestAnimationFrame(step);
+          else c.remove();
+        }
+        requestAnimationFrame(step);
+      }
+
+      // ===================================================================
+      // activity log
+      // ===================================================================
+      const logList = document.getElementById("logList");
+      const MAX_LOG_ITEMS = 60;
+
+      function roleOf(agentId) {
+        const a = state.agents.get(agentId);
+        return a ? a.role : agentId;
+      }
+      function colorOf(agentId) {
+        const a = state.agents.get(agentId);
+        return a ? a.color : "#94a3b8";
+      }
+
+      function describeAction(ev) {
+        const tool = ev.tool || "";
+        if (ev.type === "subagent_done") return "finished · handing off";
+        if (ev.type === "user_prompt") return "received user prompt";
+        if (ev.type === "session_stop") return "session stopped";
+        if (!tool) return ev.type || "—";
+
+        if (tool === "Task") return "delegating to subagent";
+        if (tool === "Bash") {
+          const cmd = ev.tool_input_summary && ev.tool_input_summary.command;
+          if (cmd) return "bash · " + cmd.split(" ")[0];
+          return "running shell command";
+        }
+        if (tool === "Write") return "writing file";
+        if (tool === "Edit") return "editing file";
+        if (tool === "Read") return "reading file";
+        if (tool === "Glob") return "globbing";
+        if (tool === "Grep") return "searching code";
+
+        const m = tool.match(/^mcp__([^_]+)__(.+)$/);
+        if (m) {
+          const server = m[1];
+          const op = m[2].replace(/_/g, " ");
+          return `${server} · ${op}`;
+        }
+        return tool;
+      }
+
+      function targetFromTool(tool) {
+        // If an agent is using a GitHub MCP tool, visualize an edge pulse to github
+        if (tool && tool.startsWith("mcp__github__")) return "github";
+        return null;
+      }
+
+      function pushLog(ev) {
+        const li = document.createElement("li");
+        li.classList.add("fresh");
+
+        const who = document.createElement("span");
+        who.className = "who";
+        who.style.color = colorOf(ev.agent);
+        who.textContent = roleOf(ev.agent);
+
+        const arrow = document.createElement("span");
+        arrow.className = "arrow";
+        arrow.textContent = "·";
+
+        const action = document.createElement("span");
+        action.className = "action";
+        action.textContent = describeAction(ev);
+
+        const t = document.createElement("span");
+        t.className = "t";
+        try {
+          const d = new Date(ev.timestamp);
+          t.textContent = d.toLocaleTimeString();
+        } catch {}
+
+        li.append(who, arrow, action, t);
+        logList.insertBefore(li, logList.firstChild);
+        while (logList.children.length > MAX_LOG_ITEMS)
+          logList.removeChild(logList.lastChild);
+        setTimeout(() => li.classList.remove("fresh"), 1500);
+      }
+
+      // ===================================================================
+      // ticket board
+      // ===================================================================
+      const COLUMNS = [
+        { key: "todo", label: "Todo" },
+        { key: "in-progress", label: "In progress" },
+        { key: "review", label: "Review" },
+        { key: "qa-testing", label: "QA testing" },
+        { key: "done", label: "Done" },
+      ];
+
+      function renderBoard() {
+        const body = document.getElementById("boardBody");
+        body.innerHTML = "";
+        for (const col of COLUMNS) {
+          const colEl = document.createElement("div");
+          colEl.className = "col";
+
+          const header = document.createElement("div");
+          header.className = "col-header";
+          const tickets = [...state.tickets.values()].filter(
+            (t) => t.state === col.key,
+          );
+          header.innerHTML = `<span>${col.label}</span><span class="count">${tickets.length}</span>`;
+          colEl.appendChild(header);
+
+          if (tickets.length === 0) {
+            const em = document.createElement("div");
+            em.className = "empty-placeholder";
+            em.textContent = "—";
+            colEl.appendChild(em);
+          } else {
+            for (const t of tickets.slice(0, 8)) {
+              const el = document.createElement("div");
+              el.className = "ticket";
+              const n = document.createElement("span");
+              n.className = "num";
+              n.textContent = "#" + t.number;
+              const ti = document.createElement("span");
+              ti.className = "title";
+              ti.textContent = t.title;
+              const b = document.createElement("span");
+              b.className = "badge";
+              b.dataset.state = t.state;
+              b.textContent = col.label;
+              el.append(n, ti, b);
+              colEl.appendChild(el);
+            }
+          }
+
+          body.appendChild(colEl);
+        }
+      }
+
+      function updateTicketFromEvent(ev) {
+        // Heuristics based on hook events. The Lead's GitHub MCP calls
+        // reveal issue/PR activity; we map them to ticket states.
+        if (!ev.tool) return;
+        const summary = ev.tool_input_summary || {};
+
+        if (ev.tool === "mcp__github__create_issue") {
+          // On tool_end we don't know the issue number, so seed a placeholder
+          // from the title if present. Real number will arrive on subsequent events.
+          if (ev.type === "tool_end") {
+            // We can't parse responses here; user can refresh for real data
+          }
+        }
+      }
+
+      // ===================================================================
+      // WebSocket
+      // ===================================================================
+      const eventCountEl = document.getElementById("eventCount");
+      const connDot = document.getElementById("connDot");
+      const connText = document.getElementById("connText");
+
+      function setConnected(c) {
+        state.connected = c;
+        connDot.classList.toggle("connected", c);
+        connDot.title = c ? "connected" : "disconnected";
+        connText.textContent = c ? "live" : "disconnected";
+      }
+
+      let ws;
+      let reconnectDelay = 500;
+
+      function connect() {
+        const url = `ws://${location.host}`;
+        try {
+          ws = new WebSocket(url);
+        } catch (e) {
+          scheduleReconnect();
+          return;
+        }
+        ws.onopen = () => {
+          setConnected(true);
+          reconnectDelay = 500;
+        };
+        ws.onclose = () => {
+          setConnected(false);
+          scheduleReconnect();
+        };
+        ws.onerror = () => {
+          // let onclose handle reconnect
+        };
+        ws.onmessage = (msg) => {
+          try {
+            const data = JSON.parse(msg.data);
+            if (data.type === "__replay__" && Array.isArray(data.events)) {
+              for (const ev of data.events) handleEvent(ev, /*silent=*/ true);
+              return;
+            }
+            handleEvent(data);
+          } catch {}
+        };
+      }
+
+      function scheduleReconnect() {
+        setTimeout(() => {
+          reconnectDelay = Math.min(reconnectDelay * 2, 8000);
+          connect();
+        }, reconnectDelay);
+      }
+
+      // ===================================================================
+      // event router
+      // ===================================================================
+      function handleEvent(ev, silent = false) {
+        state.eventCount += 1;
+        eventCountEl.textContent = state.eventCount;
+
+        const agent = ev.agent || "lead-engineer";
+        markActive(agent);
+        setNodeStatus(agent, describeAction(ev));
+
+        // Edge pulses: agent → github when hitting GitHub MCP
+        const target = targetFromTool(ev.tool);
+        if (target && target !== agent) {
+          pulseEdge(agent, target, colorOf(agent));
+        }
+        // Task tool = delegation → pulse from lead toward a generic target
+        if (ev.tool === "Task" && agent === "lead-engineer") {
+          // We don't know which subagent yet; let the subagent's own events do it
+        }
+
+        updateTicketFromEvent(ev);
+
+        if (!silent) pushLog(ev);
+      }
+
+      // ===================================================================
+      // bootstrap
+      // ===================================================================
+      async function bootstrap() {
+        buildGraph();
+        renderBoard();
+
+        // Fetch snapshot first so we have context even if WS fails
+        try {
+          const res = await fetch("/events");
+          const events = await res.json();
+          for (const ev of events) handleEvent(ev, true);
+        } catch {}
+
+        connect();
+        // Periodic board refresh for the placeholder view
+        setInterval(renderBoard, 3000);
+      }
+
+      bootstrap();
+    </script>
+  </body>
+</html>

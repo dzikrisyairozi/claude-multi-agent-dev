@@ -1,0 +1,35 @@
+# dependencies
+node_modules/
+
+# environment
+.env
+.env.local
+.env.*.local
+
+# dashboard runtime
+dashboard/.dashboard.pid
+dashboard/events.log
+
+# generated application code (per-project)
+app/
+
+# claude local overrides
+.claude/settings.local.json
+
+# os
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# editors
+.vscode/
+.idea/
+*.swp
+
+# logs
+*.log
+npm-debug.log*
+
+# build
+dist/
+build/
