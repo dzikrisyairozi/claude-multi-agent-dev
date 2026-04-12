@@ -121,7 +121,8 @@ claude-multi-agent-dev/
 │   └── package.json           # One dep: ws
 └── scripts/
     ├── setup.sh               # One-command setup
-    └── start-dashboard.sh     # Start/stop the dashboard
+    ├── start-dashboard.sh     # Start/stop the dashboard
+    └── install-into.sh        # Install orchestration into an existing repo
 ```
 
 When the agents start building, application code goes into `app/`:
@@ -183,6 +184,32 @@ The agents detect the stack from `package.json` and adapt. To prefer a specific 
 
 ### Change GitHub conventions
 The branch naming, label names, and commit style are defined in `CLAUDE.md` and each agent file. Update them together.
+
+### Install into an existing repo
+
+If you already have a working project and want to add the orchestration layer to it:
+
+```bash
+# From the template directory, run:
+bash scripts/install-into.sh /path/to/your/existing/project
+
+# Then in your existing project:
+# 1. Add the env vars it tells you to your .env
+# 2. bash scripts/setup.sh
+# 3. bash scripts/start-dashboard.sh
+# 4. claude → /start <what you want to build>
+```
+
+The installer:
+- **Copies** agents, commands, hooks, dashboard, and scripts (new files only)
+- **Merges** `.mcp.json` — preserves your existing MCP servers, adds `github` + `playwright`
+- **Merges** `.claude/settings.json` — preserves your existing hooks, adds dashboard emitters
+- **Adds** `orchestration:*` scripts to your existing `package.json` without touching anything else
+- **Appends** an orchestration workflow section to your existing `CLAUDE.md`
+- **Backs up** every modified file to `.orchestration-backup-<timestamp>/`
+- Is **idempotent** — safe to re-run; already-installed files are skipped
+
+If a file it needs to copy already exists and differs from the template, it stops with a conflict error. Use `--force` to overwrite (a backup is always saved first).
 
 ---
 
