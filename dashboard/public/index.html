@@ -822,19 +822,13 @@
         }
       }
 
-      function updateTicketFromEvent(ev) {
-        // Heuristics based on hook events. The Lead's GitHub MCP calls
-        // reveal issue/PR activity; we map them to ticket states.
-        if (!ev.tool) return;
-        const summary = ev.tool_input_summary || {};
-
-        if (ev.tool === "mcp__github__create_issue") {
-          // On tool_end we don't know the issue number, so seed a placeholder
-          // from the title if present. Real number will arrive on subsequent events.
-          if (ev.type === "tool_end") {
-            // We can't parse responses here; user can refresh for real data
-          }
+      function replaceTickets(list) {
+        state.tickets.clear();
+        for (const t of list || []) {
+          if (typeof t.number !== "number") continue;
+          state.tickets.set(t.number, t);
         }
+        renderBoard();
       }
 
       // ===================================================================
@@ -880,6 +874,10 @@
               for (const ev of data.events) handleEvent(ev, /*silent=*/ true);
               return;
             }
+            if (data.type === "__tickets__" && Array.isArray(data.tickets)) {
+              replaceTickets(data.tickets);
+              return;
+            }
             handleEvent(data);
           } catch {}
         };
@@ -913,8 +911,6 @@
           // We don't know which subagent yet; let the subagent's own events do it
         }
 
-        updateTicketFromEvent(ev);
-
         if (!silent) pushLog(ev);
       }
 
@@ -925,16 +921,27 @@
         buildGraph();
         renderBoard();
 
-        // Fetch snapshot first so we have context even if WS fails
-        try {
-          const res = await fetch("/events");
-          const events = await res.json();
-          for (const ev of events) handleEvent(ev, true);
-        } catch {}
+        // Snapshot events + tickets in parallel so we render immediately even
+        // if the WS connection is slow or drops. Subsequent updates arrive via
+        // WS (__tickets__ on every server-side GitHub poll).
+        await Promise.all([
+          (async () => {
+            try {
+              const res = await fetch("/events");
+              const events = await res.json();
+              for (const ev of events) handleEvent(ev, true);
+            } catch {}
+          })(),
+          (async () => {
+            try {
+              const res = await fetch("/tickets");
+              const { tickets } = await res.json();
+              replaceTickets(tickets);
+            } catch {}
+          })(),
+        ]);
 
         connect();
-        // Periodic board refresh for the placeholder view
-        setInterval(renderBoard, 3000);
       }
 
       bootstrap();
