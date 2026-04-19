@@ -8,11 +8,10 @@
 // the Claude Code session is never blocked. All errors are swallowed;
 // the hook must never break a session start.
 
-import { existsSync, openSync, writeFileSync, readFileSync, unlinkSync } from "node:fs";
-import { spawn, spawnSync } from "node:child_process";
+import { existsSync, openSync, writeFileSync, readFileSync, unlinkSync, appendFileSync } from "node:fs";
+import { spawn } from "node:child_process";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { platform } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
@@ -45,19 +44,21 @@ async function isUp() {
   }
 }
 
-function ensureDeps() {
-  if (existsSync(join(DASHBOARD_DIR, "node_modules"))) return true;
+function hasDeps() {
+  return existsSync(join(DASHBOARD_DIR, "node_modules"));
+}
+
+function noteMissingDeps() {
+  // Running `npm install` from a SessionStart hook blocks the hook for up to
+  // a minute on fresh clones; do it at setup time instead. Leave a breadcrumb
+  // in dashboard.log so the user can diagnose if the dashboard never comes up.
   try {
-    const r = spawnSync(platform() === "win32" ? "npm.cmd" : "npm", ["install", "--silent"], {
-      cwd: DASHBOARD_DIR,
-      stdio: "ignore",
-      timeout: 60_000,
-      shell: platform() === "win32",
-    });
-    return r.status === 0;
-  } catch {
-    return false;
-  }
+    const logPath = join(DASHBOARD_DIR, "dashboard.log");
+    appendFileSync(
+      logPath,
+      `[${new Date().toISOString()}] ensure-dashboard: dashboard/node_modules missing — run \`npm run setup\` (or \`cd dashboard && npm install\`) first.\n`,
+    );
+  } catch {}
 }
 
 const PID_PATH = join(DASHBOARD_DIR, ".dashboard.pid");
@@ -118,6 +119,10 @@ function sleep(ms) {
 (async () => {
   if (await isUp()) process.exit(0);
   if (!existsSync(join(DASHBOARD_DIR, "server.js"))) process.exit(0);
+  if (!hasDeps()) {
+    noteMissingDeps();
+    process.exit(0);
+  }
 
   if (!acquireStartLock()) {
     // Another starter got here first. Give it a moment to bind, then recheck.
@@ -125,7 +130,6 @@ function sleep(ms) {
     process.exit(0);
   }
 
-  if (!ensureDeps()) process.exit(0);
   startDetached();
   process.exit(0);
 })().catch(() => process.exit(0));

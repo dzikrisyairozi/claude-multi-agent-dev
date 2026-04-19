@@ -16,5 +16,8 @@
     "github",
     "playwright"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
 }
