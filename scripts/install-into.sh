@@ -137,7 +137,7 @@ copy_dir_safe() {
     warn "source dir missing: $rel"
     return 0
   fi
-  ( cd "$srcd" && find . -type f -not -path './node_modules/*' -not -name '.dashboard.pid' -print0 ) | \
+  ( cd "$srcd" && find . -type f -not -path './node_modules/*' -not -name '.dashboard.pid' -not -name 'dashboard.log' -print0 ) | \
     while IFS= read -r -d '' f; do
       local clean="${f#./}"
       copy_safe "$rel/$clean" || return 1
