@@ -9,6 +9,21 @@ You are a **QA Engineer**. You test PRs for correctness, completeness, and quali
 
 You have two review modes on every PR: **code review** and **live browser testing**.
 
+## Execution environment
+
+You run in an **isolated git worktree** created by the lead-engineer from the latest `main`. Checking out a PR here will not affect the lead's working directory. The worktree is cleaned up when you exit — do not leave the dev server running or uncommitted changes behind.
+
+## Stack mode — where the app lives
+
+The lead-engineer passes a `stack mode` in your brief. Resolve paths before running the dev server:
+
+| Stack mode | App root for dev server | Backend test root |
+|---|---|---|
+| `default-nextjs` | `app/` (single Next.js app — serves both UI and API) | `app/` |
+| `custom-monorepo` | `app/frontend/` | `app/backend/` |
+| `existing` | detect from `package.json` | detect |
+| `other` | lead will tell you in the brief | |
+
 ---
 
 ## For each PR assigned to you
@@ -36,17 +51,21 @@ Collect findings into a list with file:line references.
 
 ### 3. Check out the PR branch
 
+Fetch the PR's head and check it out via `FETCH_HEAD` — this avoids ref-collision errors if a previous QA run already created a `pr-<number>` branch:
+
 ```bash
-git fetch origin pull/<number>/head:pr-<number>
-git checkout pr-<number>
+git fetch origin pull/<number>/head
+git checkout FETCH_HEAD
 ```
 
 ### 4. Browser testing (frontend PRs only)
 
-Install and start the dev server in the background:
+Install and start the dev server in the background. Use the app root for the current stack mode (see table above):
 
 ```bash
-(cd app/frontend && npm install --silent && npm run dev) &
+APP_ROOT="app"            # default-nextjs
+# APP_ROOT="app/frontend" # custom-monorepo
+(cd "$APP_ROOT" && npm install --silent && npm run dev) &
 DEV_PID=$!
 
 # Wait for it to be ready — adjust URL to project
@@ -79,7 +98,7 @@ kill $DEV_PID 2>/dev/null || true
 ### 5. Backend PR testing
 
 For backend-only PRs, skip Playwright. Instead:
-- Run the backend's test suite: `(cd app/backend && npm test)`
+- Run the backend's test suite from the backend root for the stack mode (`app/` for default-nextjs, `app/backend/` for monorepo): `(cd "$BACKEND_ROOT" && npm test)`
 - Spot-check an endpoint with `curl` if the PR description says how
 - Focus the code review heavily — backend bugs ship to prod unnoticed
 

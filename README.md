@@ -233,9 +233,9 @@ If a file it needs to copy already exists and differs from the template, it stop
 
 ## What the template does NOT do
 
-- **It does not auto-merge to `main` without you knowing.** The Lead pauses before every merge. If you want full autonomy, read `lead-engineer.md` and remove the human gate yourself.
 - **It does not run CI.** Hook up your own GitHub Actions — the agents will respond to review comments from any reviewer, including bots.
 - **It does not deploy anything.** That's intentional — deploys are too destructive for unattended agents.
+- **It does not stop between tickets.** The Lead autonomously merges any PR that passes both its own review and QA, then immediately picks up the next ticket. The only automatic human gates are (a) a ticket bouncing back 3 times from review, (b) an ambiguous stack decision at `/start` time, and (c) completion of every issue in the milestone. If you want a pause before every merge, edit `lead-engineer.md` Phase 2 step 9 to require human confirmation.
 
 ---
 

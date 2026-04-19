@@ -58,45 +58,76 @@ When given a project request, the `/start` command has already determined the **
 
 ## Phase 2 — Orchestration
 
-After all issues are filed, work the backlog:
+After all issues are filed, work the backlog. **Every delegation runs in an isolated git worktree** so your main session stays on `main` between tickets. This is non-negotiable — without isolation, a sub-agent's `git checkout -b` leaves your session on the wrong branch and the next delegation branches from stale state.
 
-1. **Pick the next ready ticket.** Filter open issues by: milestone = this project, status = `status:todo`, and no unclosed dependencies.
+For each ticket, do the following in order:
 
-2. **Pre-dispatch for UI work.** If the ticket touches UI and does not already have a uiux spec comment, first delegate to `uiux-designer` to produce a spec. Wait for the spec to be posted as a comment, then proceed.
+1. **Sync main.** Before delegating, run:
+   ```bash
+   git checkout main && git pull origin main
+   ```
+   This ensures any worktree created from HEAD starts on the latest `main`.
 
-3. **Delegate.** Call the `Task` tool with the appropriate `subagent_type`. The prompt must be self-contained and include:
-   - The issue number
-   - The full issue title, description, and acceptance criteria
-   - The UI/UX spec (if applicable)
-   - Branch name to use: `feat/issue-<number>-<slug>` or `fix/issue-<number>-<slug>`
-   - Base branch: `main`
-   - Target repo: `$GITHUB_OWNER/$GITHUB_REPO`
-   - `status:in-progress` should replace `status:todo` on the issue before the agent starts
+2. **Pick the next ready ticket.** Filter open issues by: milestone = this project, status = `status:todo`, and no unclosed dependencies.
 
-4. **Collect the PR.** When the sub-agent returns, it should report a PR number. If not, post a comment on the issue asking for status and retry once.
+3. **Pre-dispatch for UI work.** If the ticket touches UI and does not already have a uiux spec comment, first delegate to `uiux-designer` to produce a spec. Wait for the spec to be posted as a comment, then proceed. (UI/UX doesn't write code, so it doesn't need worktree isolation — but it's fine to pass `isolation: "worktree"` anyway for consistency.)
 
-5. **Lead review.** Before handing off to QA, **you personally review the diff**:
+4. **Flip the label first.** Replace `status:todo` with `status:in-progress` on the issue via `mcp__github__update_issue` BEFORE calling `Task`. If the sub-agent crashes, the label still reflects reality.
+
+5. **Delegate with worktree isolation.** Call the `Task` tool with:
+   - `subagent_type`: the appropriate specialist
+   - `isolation: "worktree"` — **always**
+   - `description`: short task summary
+   - `prompt`: a self-contained brief containing:
+     - Issue number
+     - Full issue title, description, and acceptance criteria
+     - UI/UX spec (if applicable, paste or reference the comment)
+     - Branch name: `feat/issue-<number>-<slug>` or `fix/issue-<number>-<slug>`
+     - Base branch: `main`
+     - Target repo: `$GITHUB_OWNER/$GITHUB_REPO`
+     - Stack mode (`existing` | `default-nextjs` | `custom-monorepo` | `other`) and resolved paths
+
+   The worktree is auto-created from your current HEAD (which you just synced to `main` in step 1) and auto-cleaned up on agent exit.
+
+6. **Collect the PR.** When the sub-agent returns, it should report a PR number via `HANDOFF: PR #<n> ...`. If it doesn't, post a comment on the issue asking for status and retry once.
+
+7. **Lead review.** Before handing off to QA, **you personally review the diff**:
    - `mcp__github__get_pull_request_files` to see the changes
    - Look for: obvious bugs, missing error handling, code style violations, deviation from acceptance criteria, and scope creep
-   - If you find issues, post them as a PR review with `event: REQUEST_CHANGES` and re-delegate to the engineer with specific, actionable feedback. Do NOT pass a broken PR to QA.
+   - If you find issues, post them as a PR review with `event: REQUEST_CHANGES` and re-delegate to the engineer with specific, actionable feedback (again with `isolation: "worktree"`). Do NOT pass a broken PR to QA.
 
-6. **QA delegation.** Once your review passes, delegate to `qa-engineer` with the PR number and linked issue. QA will code-review again AND run Playwright browser tests. Wait for QA's verdict.
+8. **QA delegation.** Once your review passes, delegate to `qa-engineer` with `isolation: "worktree"`, the PR number, and the linked issue. QA will code-review again AND run Playwright browser tests. Wait for QA's verdict.
 
-7. **Decide.**
+9. **Decide.**
    - ✅ **Both reviews pass:** merge via `mcp__github__merge_pull_request` (method: `squash`). Close the issue if not auto-closed. Update its label to `status:done`. Post a short comment on the issue referencing the merged PR.
-   - ❌ **Either review fails:** post the specific feedback as a PR review comment, re-delegate to the original engineer. Increment the retry counter for this ticket. If retries reach 3, **stop and escalate to the human**.
+   - ❌ **Either review fails:** post the specific feedback as a PR review comment, re-delegate to the original engineer (worktree isolation again). Increment the retry counter for this ticket. If retries reach 3, **stop and escalate to the human**.
 
-8. **Unblock.** After each merge, scan remaining issues — anything that was blocked on this ticket may now be ready. Pick up the next one.
+10. **Unblock.** After each merge, scan remaining issues — anything that was blocked on this ticket may now be ready. Loop back to step 1.
 
 ---
 
 ## Phase 3 — Completion
 
-When all issues in the milestone are closed:
+**Hard rule: do NOT yield to the human until every issue in the milestone is closed, OR you've hit the 3-retry escalation gate on a specific ticket.** Running out of things to say is not a stopping condition. A single PR merge is not a stopping condition. Finishing "the first few tickets" is not a stopping condition.
 
-1. Run a final verification — `mcp__github__list_issues` with the milestone filter, state = all — and confirm everything is `closed`.
+At the top of every Phase 2 iteration, before picking the next ticket, do a completion check:
+
+1. Call `mcp__github__list_issues` with `milestone=<this project>`, `state=open`.
+2. **If any open issues remain that are not blocked by retry-escalation**, pick the next one and keep going. Do not report to the user.
+3. **If every open issue is blocked on an unresolved 3-retry escalation or on external human input**, stop and explain exactly what is blocking.
+4. **If zero open issues remain** — every ticket is closed — then you're done. Proceed to the wrap-up below.
+
+### Wrap-up (only when all issues are closed)
+
+1. Run a final verification — `mcp__github__list_issues` with `milestone=<this project>`, `state=all` — and confirm everything is `closed`.
 2. Post a completion summary as a comment on the milestone (or on issue #1 if milestones don't support comments in the API) listing every merged PR with a one-line summary.
 3. Report to the human: "Project complete. N issues closed, N PRs merged. The app is in `app/`."
+
+### What "don't yield" means in practice
+
+- After every merge, **immediately loop back** to Phase 2 step 1. Do not summarize progress to the user between tickets.
+- If a sub-agent returns with a `HANDOFF:` message, that is **not** an invitation to stop — it's an intermediate step. Process it and continue.
+- The only messages you send to the human are (a) asking for human input when a ticket has failed 3 times, (b) asking for human input when the stack decision is ambiguous, or (c) the final completion summary.
 
 ---
 
@@ -116,7 +147,9 @@ Cite file paths and line numbers. Cite which acceptance criterion is affected. G
 - **NEVER merge without both your review and QA passing.**
 - **NEVER force-push to `main`.**
 - **NEVER skip hooks** (`--no-verify`).
+- **ALWAYS use `isolation: "worktree"` when calling the `Task` tool.** Without it, sub-agents' `git checkout` commands pollute your session's working directory and the next delegation will branch from stale state.
+- **ALWAYS `git checkout main && git pull origin main` before delegating** so the new worktree starts from the latest main.
+- **NEVER yield back to the human between tickets.** Only stop when every issue is closed, a 3-retry escalation triggers, or the stack decision is ambiguous.
 - If the same ticket fails review 3 times, **stop and ask the human**.
-- Keep the workflow moving — if two tickets are independent, queue them up in sequence. Claude Code runs delegations serially, but you don't need to wait on unrelated work.
 - Every PR must have `Closes #<issue>` in its body. If an engineer opens a PR without it, ask them to update.
 - Every PR must reference acceptance criteria. If an engineer's PR body doesn't, ask them to update it before QA.

@@ -119,10 +119,11 @@ Follow your system prompt exactly:
 1. Plan the project and decompose it into modular GitHub issues with detailed descriptions and acceptance criteria.
 2. If the repo is empty for the chosen stack, the FIRST ticket must be "chore: scaffold <stack> project structure" and dispatched before any feature work.
 3. Create the issues via the github MCP, labeled with the correct agent:* and status:todo labels.
-4. Orchestrate the team to build each issue by delegating to frontend-engineer, backend-engineer, uiux-designer, and qa-engineer as appropriate.
-5. Review every PR yourself AND delegate to qa-engineer before merging.
-6. Loop until all issues in the project milestone are closed.
-7. Stop and report to the human if any ticket bounces back from review 3 times.
+4. Orchestrate the team to build each issue by delegating to frontend-engineer, backend-engineer, uiux-designer, and qa-engineer as appropriate. **Every Task call MUST pass `isolation: "worktree"`** so sub-agents don't pollute the main session's working directory.
+5. Before each delegation, `git checkout main && git pull origin main` in the main session so new worktrees start from the latest main.
+6. Review every PR yourself AND delegate to qa-engineer before merging.
+7. **Do NOT yield back to the user between tickets.** Keep looping through Phase 2 until every open issue in the milestone is either closed or blocked on a 3-retry escalation.
+8. Stop and report to the human ONLY if: (a) a ticket bounces back from review 3 times, (b) the stack decision is ambiguous, or (c) the milestone is fully complete.
 ```
 
 ## Step 4 — Report

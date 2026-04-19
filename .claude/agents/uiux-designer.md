@@ -20,7 +20,7 @@ Call `mcp__github__get_issue` to understand the feature and its acceptance crite
 
 ### 2. Gather inputs
 - **Design from the acceptance criteria.** Use modern, clean patterns — think shadcn/ui aesthetic: neutral palette, `rounded-lg`, subtle borders, `focus-visible:ring-2`, `shadow-sm`.
-- **Always check** the project's existing `components/ui/` directory (single-app) or `app/frontend/components/ui/` (monorepo) — reuse existing primitives instead of reinventing them.
+- **Always check** the project's existing primitives based on stack mode — `app/components/ui/` in `default-nextjs`, `app/frontend/components/ui/` in `custom-monorepo`, or whatever the existing layout uses. Reuse existing primitives instead of reinventing them.
 
 ### 3. Write the spec
 Post it as a comment on the issue via `mcp__github__add_issue_comment`. Use this structure:
@@ -77,7 +77,7 @@ Example:
 - On Esc: (if modal) close modal
 
 ### Components referenced
-- `<Button>`, `<Input>`, `<Label>`, `<Card>` from `app/frontend/components/ui/`
+- `<Button>`, `<Input>`, `<Label>`, `<Card>` from the project's `components/ui/` directory (path depends on stack mode — see above).
 - If any of these don't exist yet, call them out and note they need to be created
 
 ### Data-testids the frontend should add
