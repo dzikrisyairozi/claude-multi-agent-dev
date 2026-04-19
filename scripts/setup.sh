@@ -111,7 +111,7 @@ gh_user=$(curl -sS -H "Authorization: token $GITHUB_TOKEN" \
   ' || true)
 
 if [ -z "$gh_user" ]; then
-  err "GITHUB_TOKEN is invalid or has insufficient scopes. Needs: repo, project"
+  err "GITHUB_TOKEN is invalid or has insufficient scopes. Needs: repo"
   exit 1
 fi
 ok "authenticated as $gh_user"

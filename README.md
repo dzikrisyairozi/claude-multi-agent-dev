@@ -69,7 +69,7 @@ GITHUB_REPO=your-repo-name
 DASHBOARD_PORT=3456
 ```
 
-The token needs **`repo`** and **`project`** scopes. Create one at https://github.com/settings/tokens.
+The token needs the **`repo`** scope (full repository access). Create a classic token at https://github.com/settings/tokens. No `project` scope is required — the Lead organizes work via milestones, not Projects v2 boards.
 
 ### 3. Start the dashboard
 
@@ -142,7 +142,7 @@ app/
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `GITHUB_TOKEN` | yes | Personal access token with `repo` + `project` scopes. Used by the GitHub MCP, setup script, and dashboard. |
+| `GITHUB_TOKEN` | yes | Personal access token with `repo` scope. Used by the GitHub MCP, setup script, and dashboard. |
 | `GITHUB_OWNER` | yes | Target repo owner (user or org). |
 | `GITHUB_REPO` | yes | Target repo name. |
 | `DASHBOARD_PORT` | no | Port for the local dashboard. Default: `3456`. |
@@ -215,7 +215,7 @@ If a file it needs to copy already exists and differs from the template, it stop
 
 ## Troubleshooting
 
-**"GITHUB_TOKEN is invalid or has insufficient scopes"** — Regenerate a token with `repo` + `project` scopes. Update `.env`. Re-run `scripts/setup.sh`.
+**"GITHUB_TOKEN is invalid or has insufficient scopes"** — Regenerate a classic token with the `repo` scope. Update `.env`. Re-run `scripts/setup.sh`.
 
 **Dashboard shows "disconnected"** — The dashboard isn't running, or it's on a different port. Check `bash scripts/start-dashboard.sh` and `DASHBOARD_PORT` in `.env`.
 
