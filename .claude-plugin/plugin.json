@@ -1,0 +1,14 @@
+{
+  "name": "agent-skills",
+  "version": "0.1.0",
+  "description": "Harness-agnostic engineering skills and lifecycle commands (spec, plan, build, test, review, ship) for AI coding agents.",
+  "author": {
+    "name": "dzikrisyairozi"
+  },
+  "homepage": "https://github.com/dzikrisyairozi/claude-multi-agent-dev",
+  "repository": "https://github.com/dzikrisyairozi/claude-multi-agent-dev",
+  "license": "MIT",
+  "commands": ["./.claude/commands", "./commands"],
+  "agents": "./agents",
+  "skills": "./skills"
+}

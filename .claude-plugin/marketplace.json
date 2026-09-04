@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "agent-skills",
+  "description": "Harness-agnostic engineering skills and lifecycle commands (spec, plan, build, test, review, ship) for AI coding agents.",
+  "owner": {
+    "name": "dzikrisyairozi",
+    "url": "https://github.com/dzikrisyairozi"
+  },
+  "plugins": [
+    {
+      "name": "agent-skills",
+      "version": "0.1.0",
+      "source": {
+        "source": "github",
+        "repo": "dzikrisyairozi/claude-multi-agent-dev"
+      },
+      "description": "Engineering skills covering every phase of software development: spec, plan, build, verify, review, and ship.",
+      "homepage": "https://github.com/dzikrisyairozi/claude-multi-agent-dev",
+      "license": "MIT",
+      "keywords": ["skills", "agents", "engineering", "spec", "tdd", "review", "ship"]
+    }
+  ]
+}
