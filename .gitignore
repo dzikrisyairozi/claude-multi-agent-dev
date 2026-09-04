@@ -1,3 +1,6 @@
+# spec/ and tasks/ are NOT ignored here — this repo tracks its own
+# spec/plan/review artifacts as its design record (see spec/agent-skills-overhaul/).
+
 # dependencies
 node_modules/
 
