@@ -41,7 +41,7 @@ claude --plugin-dir /path/to/this/repo
 or, once pushed:
 
 ```
-/plugin marketplace add dzikrisyairozi/claude-multi-agent-dev
+/plugin marketplace add dzikrisyairozi/agent-skills
 /plugin install agent-skills@agent-skills
 ```
 
