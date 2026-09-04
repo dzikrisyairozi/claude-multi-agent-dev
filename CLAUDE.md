@@ -1,97 +1,47 @@
-# Multi-Agent Development Workflow
+# claude-multi-agent-dev (agent-skills)
 
-This repository uses a multi-agent architecture. When the user gives a project prompt (e.g., "Create me a todo app"), follow this workflow.
+This is a personal, harness-agnostic engineering-skills pack — forked from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) and customized around a per-feature `spec/<feature-name>/` and `tasks/<feature-name>/` artifact convention. See `spec/agent-skills-overhaul/spec.md` for the full rationale and `docs/cutover.md` for what changed vs. upstream.
 
-## Entry Point
+> **Scope:** This file configures agents working on **this repository** (the skill pack itself), not other projects. Don't copy it into another project or a global agent configuration — the reusable assets are the skills in `skills/`.
 
-Use the `/start` slash command to kick off a new project. It validates the environment, then delegates to the `lead-engineer` agent.
+## Project Structure
 
-## Environment
-
-- Load `.env` for GitHub credentials and config.
-- The GitHub repo specified by `GITHUB_OWNER` / `GITHUB_REPO` in `.env` is the target for all issues, branches, and PRs.
-- The dashboard at `http://localhost:${DASHBOARD_PORT}` (default 3456) shows real-time orchestration. Start it with `./scripts/start-dashboard.sh`.
-
-## Workflow Rules
-
-1. **ALL coordination happens through GitHub** — issues and PRs are the shared memory between agents.
-2. **NEVER write feature code in the lead-engineer agent** — always delegate via the `Task` tool.
-3. **Every piece of work must have a GitHub issue** before code is written.
-4. **Every code change must go through a PR**, never push directly to `main`.
-5. **The lead-engineer is the ONLY agent that merges PRs.** Specialists cannot merge.
-6. **If a ticket bounces back more than 3 times** from review, stop and ask the human.
-7. **Always branch from the latest `main`**, never from another agent's in-progress branch.
-8. **Hooks auto-emit events to the dashboard** — you don't need to do anything special, just work normally.
-
-## GitHub Conventions
-
-- **Branch naming:**
-  - Features: `feat/issue-<number>-<short-slug>`
-  - Fixes: `fix/issue-<number>-<short-slug>`
-- **PR title:** `[#<issue-number>] <description>`
-- **PR body:** must reference the issue with `Closes #<number>`
-- **Labels:**
-  - Agent: `agent:lead`, `agent:frontend`, `agent:backend`, `agent:uiux`, `agent:qa`
-  - Status: `status:todo`, `status:in-progress`, `status:review`, `status:qa-testing`, `status:done`
-- **Commit messages:** conventional commits — `feat(frontend): ...`, `fix(backend): ...`, `chore: ...`
-
-## Stack decision (done at `/start` time)
-
-Before any tickets are filed, the `/start` command decides the tech stack:
-
-1. **If existing code is present** (`app/` has content, top-level `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `turbo.json`, etc.) — **continue with it**. Do not introduce new frameworks.
-2. **If the repo is fresh** — ask the user:
-   - **Default (option 1):** Next.js 14 (App Router) + TypeScript + Tailwind CSS as a **single full-stack app** under `app/`. Backend lives in `app/app/api/`. No frontend/backend split.
-   - **Custom monorepo (option 2):** user picks frontend + backend (e.g. React + Rust, Next + Go, Vite + Python/FastAPI). Scaffold a **Turborepo** with `app/frontend/`, `app/backend/`, `app/shared/`.
-   - **Other (option 3):** user describes something custom; confirm and proceed.
-3. **Whatever the choice, the first ticket the Lead files is always `[chore] Scaffold <stack> project structure`** — and it blocks all feature tickets.
-
-## Project Structure for Generated Apps
-
-The layout depends on the stack mode:
-
-**Default (Next.js single full-stack app):**
 ```
-app/
-├── app/            # Next.js App Router (pages + layouts)
-│   └── api/        # API routes (backend lives here)
-├── components/
-├── lib/
-├── styles/
-├── package.json
-├── tailwind.config.ts
-└── tsconfig.json
+skills/            → Core skills (SKILL.md per directory)
+agents/             → Reusable agent personas (code-reviewer, test-engineer, security-auditor, web-performance-auditor)
+.claude/commands/   → Claude Code commands (/spec, /plan, /build, /test, /review, /code-simplify, /ship, /webperf, /constraints, /quiz)
+commands/, .gemini/commands/ → generic + Gemini CLI mirrors of the same commands
+.claude-plugin/, .codex-plugin/, .agents/plugins/, .opencode/ → per-harness plugin manifests/surfaces
+references/         → Supplementary checklists (testing, performance, security, accessibility, observability, orchestration)
+docs/               → Setup guides per harness + skill-anatomy.md + cutover.md
+scripts/            → Validators (npm run validate) and their tests (npm test)
+spec/, tasks/       → This repo's own spec/plan artifacts — tracked here (not gitignored), see the T0.2 note in tasks/agent-skills-overhaul/plan.md
 ```
 
-**Turborepo monorepo (custom stacks):**
-```
-app/
-├── frontend/       # chosen frontend framework
-├── backend/        # chosen backend framework/language
-├── shared/         # shared types, constants, contracts
-├── turbo.json
-├── package.json    # workspace root
-└── pnpm-workspace.yaml (if pnpm)
-```
+## Skills by Phase
 
-The `app/` directory is gitignored by default so the template stays clean — remove the `app/` line from `.gitignore` in your target project if you want to commit the generated code.
+**Define:** interview-me, idea-refine, spec-driven-development
+**Plan:** planning-and-task-breakdown, constraint-driven-development
+**Build:** incremental-implementation, test-driven-development, context-engineering, source-driven-development, doubt-driven-development, frontend-ui-engineering, api-and-interface-design
+**Verify:** browser-testing-with-devtools, debugging-and-error-recovery
+**Review:** code-review-and-quality, code-simplification, security-and-hardening, performance-optimization
+**Ship:** git-workflow-and-versioning, ci-cd-and-automation, deprecation-and-migration, documentation-and-adrs, observability-and-instrumentation, shipping-and-launch
 
-## Styling
+## Conventions
 
-Frontend work **must use Tailwind CSS** unless the user explicitly requests otherwise. No CSS-in-JS, no `.module.css`, no inline styles beyond dynamic values.
+- Every skill lives in `skills/<name>/SKILL.md`, YAML frontmatter with `name` + `description` (description: what it does, then "Use when...").
+- Every skill has: Overview, When to Use, Process, Common Rationalizations, Red Flags, Verification.
+- Shared references live in root `references/`; a skill's own references live in `skills/<name>/references/`.
+- **Path convention (the reason this fork exists):** specs at `spec/<feature-name>/spec.md`, plans at `tasks/<feature-name>/plan.md`, task lists at `tasks/<feature-name>/todo.md`, review remediation at `tasks/<feature-name>/review/{plan,todo}.md`. Never write these at the top level (`SPEC.md`, `tasks/plan.md`) — `SPEC.md`/`docs/SPEC.md` are recognized only as legacy fallback locations `/build` still checks.
+- Every skill change that touches a command must update all three surfaces: `.claude/commands/*.md`, `commands/*.toml`, `.gemini/commands/*.toml`.
 
-## Dashboard Integration
+## Commands
 
-Every agent action emits events to the dashboard server at `http://localhost:${DASHBOARD_PORT}/event` via the hooks configured in `.claude/settings.json`. The dashboard shows:
+- `npm run validate` — skill frontmatter, command parity across the 3 surfaces, manifest version agreement, spec/plan artifact-path drift, `references/` link resolution, `.opencode/skills` sync.
+- `npm test` — unit tests for the validators (`node --test`).
 
-- Which agent is currently active
-- What tool each agent is running right now
-- A live edge animation when agents hand off work
-- A ticket board showing issue states
-- An activity log of the last ~200 events
+## Boundaries
 
-You don't emit events manually — just work normally and the hooks capture everything.
-
-## When in doubt
-
-Read the agent files in `.claude/agents/` for detailed per-role instructions. The `lead-engineer.md` file is the authoritative source for orchestration behavior.
+- **Always:** follow `docs/skill-anatomy.md` for new/changed skills; run `npm run validate` and `npm test` before committing; keep the per-feature path convention.
+- **Ask first:** renaming this repo or the `agent-skills` plugin name; deleting a skill, command, or persona; pushing to `origin`; opening a PR.
+- **Never:** add a skill that's vague advice instead of an actionable process; duplicate content between skills instead of referencing; let the three command surfaces drift out of sync.

@@ -1,0 +1,34 @@
+---
+description: Comprehension gate — quiz me on the code my agent just wrote before it's cleared to hand off. 5 medium questions grounded in the real diff; I must pass to mark work ready for team review.
+---
+
+This gate exists to stop **cognitive debt** — code the agent wrote that I now own but can't explain — from reaching my teammates. I do not push, open a PR, or mark work "ready for review" until I pass.
+
+## Subject
+
+Quiz the code **written or changed in this session** by default. If `$ARGUMENTS` names a file, symbol, or scope, quiz that instead.
+
+## Protocol
+
+1. **Build 5 questions, medium difficulty, grounded in the ACTUAL code** just written — cite `file:line` for each. No generic language/framework trivia; every question must be answerable only by someone who understands *this* diff. Spread them across:
+   1. **Why-this-design** — why this approach, and what breaks if a specific choice changed.
+   2. **Trace the flow** — follow the data/control path end to end through the code.
+   3. **Failure / edge case** — a concrete bad input or fault, and how the code handles (or doesn't) it.
+   4. **Cost** — complexity, memory, or where the real bottleneck is.
+   5. **Extend it** — "how would you change this to do X" (applied understanding).
+2. **Ask ONE question at a time using the `AskUserQuestion` tool — not plain text.** The user picks from a real selectable list, the same way `/spec` asks clarifying questions; they should never have to type A/B/C/D. One `AskUserQuestion` call per question:
+   - `question`: the quiz question itself, grounded in the diff (cite `file:line` in the question text).
+   - `header`: short label like `Q1/5`, `Q2/5`, … (≤12 chars).
+   - `options`: exactly 4 entries, `multiSelect: false`. One is correct; the other three are plausible distractors drawn from real near-misses in the diff (a common mix-up, a step out of order, a superficially-similar file/symbol, an off-by-one/wrong-condition) — never throwaway-obviously-wrong filler. Put each option's full reasoning in its `description`, not just a short tag, so the choice is self-contained without needing the question restated.
+   - Vary which position (1st–4th) holds the correct option across the 5 questions — don't let it always land in the same slot.
+   - Do **not** reveal, hint, or lead with the answer before they respond. Ask exactly one question per tool call — never batch multiple quiz questions into one `AskUserQuestion` call.
+3. **Grade each answer** Pass / Miss by comparing their selected option to the correct one. Then state the correct option + a one-line reason + `file:line`. Keep it brief.
+4. **The user answers, not me.** `AskUserQuestion` always offers a free-text "Other" — if they use it to dodge instead of engaging (e.g. "just tell me"), that's a **Miss**; if they use it to give a correct explanation in their own words, grade that on its merits. The point is their understanding, not the agent's.
+5. **Passing bar:** 4/5, with **no Miss on core-logic questions** (the flow / cost / failure ones). The user can override the bar explicitly.
+
+## Verdict
+
+- **PASS** → "Cleared to hand off." Pushing is still the user's call — the gate clears understanding, it does not auto-ship.
+- **FAIL** → the work is **not** cleared. List exactly which parts were misunderstood, point to the `file:line` to reread, and offer to (a) walk through those parts, then (b) re-quiz with fresh questions on the same code.
+
+**Hard rule:** on a FAIL, do not push, commit-for-handoff, open a PR, or mark the work "ready for review." Code you can't explain does not reach teammates.

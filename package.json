@@ -2,20 +2,11 @@
   "name": "claude-multi-agent-dev",
   "version": "0.1.0",
   "private": true,
-  "description": "A template repo that turns Claude Code into a multi-agent software development team — Lead, Frontend, Backend, UI/UX, and QA — with a live orchestration dashboard.",
+  "description": "Harness-agnostic engineering skills and lifecycle commands (spec, plan, build, test, review, ship) for AI coding agents.",
   "scripts": {
-    "setup": "bash scripts/setup.sh",
-    "dashboard": "bash scripts/start-dashboard.sh",
-    "dashboard:stop": "bash -c 'if [ -f dashboard/.dashboard.pid ]; then kill $(cat dashboard/.dashboard.pid) 2>/dev/null; rm dashboard/.dashboard.pid; echo stopped; else echo not running; fi'"
+    "validate": "node scripts/validate-skills.js && node scripts/validate-commands.js && node scripts/validate-versions.js && node scripts/validate-artifact-paths.js && node scripts/validate-reference-links.js && node scripts/validate-opencode-sync.js",
+    "test": "node --test scripts/validate-artifact-paths-test.js scripts/validate-commands-test.js scripts/validate-reference-links-test.js scripts/validate-versions-test.js scripts/lib/skill-lint-test.js"
   },
-  "keywords": [
-    "claude-code",
-    "multi-agent",
-    "template",
-    "orchestration",
-    "github",
-    "playwright"
-  ],
   "license": "MIT",
   "engines": {
     "node": ">=18"
