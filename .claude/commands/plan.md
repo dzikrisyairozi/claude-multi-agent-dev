@@ -1,0 +1,16 @@
+---
+description: Break work into small verifiable tasks with acceptance criteria and dependency ordering
+---
+
+Invoke the agent-skills:planning-and-task-breakdown skill.
+
+Read the existing spec (SPEC.md or equivalent) and the relevant codebase sections — use serena's `get_symbols_overview`/`find_symbol` for targeted reads, or spawn a `cavecrew-investigator` subagent instead of vanilla `Explore` for broad reference-finding (measured 2026-08-08 on a real symbol: identical accuracy, 3/3 files and 7/7 hits both ways, returned output 919 vs 1,335 chars — ~31% smaller). This is a different axis from interactive caveman mode: the subagent case is a one-shot output-size win, not the per-turn overhead tax that made interactive caveman net-negative on the main loop ([[feedback_caveman_net_negative]]) — don't conflate the two. Then:
+
+1. Enter plan mode — read only, no code changes
+2. Identify the dependency graph between components — default to `grep`/`git grep` for the exact symbol(s) a task will touch (measured 2026-08-07: ~750 tok, 9/9 files correct on a real test in this repo). serena's `find_referencing_symbols` under-counts references that cross the `apps/web` ↔ `packages/*` workspace boundary (verified: found 2 of 9 real files on the same test) — fine as a same-package cross-check, not the default for cross-package blast radius. `graphify affected`/`graphify path` cost *more* tokens than grep for this and have shown real accuracy issues (conflated symbols, barrel-re-export noise) — only use as a rough map, then verify every finding with grep before it drives a task boundary
+3. Slice work vertically (one complete path per task, not horizontal layers)
+4. Write tasks with acceptance criteria and verification steps
+5. Add checkpoints between phases
+6. Present the plan for human review
+
+Save the plan to `tasks/<feature-name>/plan.md` and the task list to `tasks/<feature-name>/todo.md`, reusing the same `<feature-name>` slug as the spec (`spec/<feature-name>/spec.md`) — e.g. `tasks/377-chat-surface-materials/`. Create the directory if needed. Never write `tasks/plan.md` or `tasks/todo.md` at the top level.
