@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "description": "Harness-agnostic engineering skills and lifecycle commands (spec, plan, build, test, review, ship) for AI coding agents.",
+  "scripts": {
+    "validate": "node scripts/validate-skills.js && node scripts/validate-commands.js && node scripts/validate-versions.js && node scripts/validate-artifact-paths.js && node scripts/validate-reference-links.js && node scripts/validate-opencode-sync.js",
+    "test": "node --test scripts/validate-artifact-paths-test.js scripts/validate-commands-test.js scripts/validate-reference-links-test.js scripts/validate-versions-test.js scripts/lib/skill-lint-test.js"
+  },
   "license": "MIT",
   "engines": {
     "node": ">=18"

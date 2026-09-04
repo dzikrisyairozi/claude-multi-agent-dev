@@ -13,4 +13,4 @@ Read the existing spec (SPEC.md or equivalent) and the relevant codebase section
 5. Add checkpoints between phases
 6. Present the plan for human review
 
-Save the plan to `tasks/<feature-name>/plan.md` and the task list to `tasks/<feature-name>/todo.md`, reusing the same `<feature-name>` slug as the spec (`spec/<feature-name>/spec.md`) — e.g. `tasks/377-chat-surface-materials/`. Create the directory if needed. Never write `tasks/plan.md` or `tasks/todo.md` at the top level.
+Save the plan to `tasks/<feature-name>/plan.md` and the task list to `tasks/<feature-name>/todo.md`, reusing the same `<feature-name>` slug as the spec (`spec/<feature-name>/spec.md`) — e.g. `tasks/377-chat-surface-materials/`. Create the directory if needed. Never write the plan or task list directly under `tasks/` — always nest them in the feature's own subdirectory.

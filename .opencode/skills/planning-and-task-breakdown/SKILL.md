@@ -145,7 +145,7 @@ If a task is L or larger, it should be broken into smaller tasks. An agent perfo
 - **Plan document:** Save the implementation plan to `tasks/<feature-name>/plan.md`. This is always a markdown file — design decisions, risks, and open questions don't map cleanly onto individual tracker issues.
 - **Task list:** Record each task in the **task list target** (defined below).
 
-Create the `tasks/<feature-name>/` directory if it does not exist, reusing the same `<feature-name>` kebab-case slug as the spec (`spec/<feature-name>/spec.md`). Never write `tasks/plan.md` or `tasks/todo.md` at the top level.
+Create the `tasks/<feature-name>/` directory if it does not exist, reusing the same `<feature-name>` kebab-case slug as the spec (`spec/<feature-name>/spec.md`). Never write the plan or task list directly under `tasks/` — always nest them in the feature's own subdirectory.
 
 **Never overwrite an incomplete plan.** Before writing `tasks/<feature-name>/plan.md` or `tasks/<feature-name>/todo.md`, check whether they already exist and still contain unchecked tasks:
 
