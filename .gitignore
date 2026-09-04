@@ -9,13 +9,6 @@ node_modules/
 .env.local
 .env.*.local
 
-# dashboard runtime
-dashboard/.dashboard.pid
-dashboard/events.log
-
-# generated application code (per-project)
-app/
-
 # claude local overrides
 .claude/settings.local.json
 
